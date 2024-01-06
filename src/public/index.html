@@ -1,0 +1,147 @@
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <style>
+      body {
+        margin: 0;
+      }
+
+      .container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background-color: black;
+        width: 100%;
+        height: 100%;
+      }
+
+      .container img {
+        height: 100%;
+      }
+
+      .display-container {
+        position: relative;
+      }
+
+      #display {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+      }
+
+      #error-message {
+        color: white;
+        display: none;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container">
+      <div class="display-container">
+        <img id="display-img" src="/streaming" onerror="onConnectionError()" />
+        <div id="display"></div>
+      </div>
+      <p id="error-message">接続できません。再読み込みしてください。</p>
+    </div>
+  </body>
+
+  <script>
+    let isError = false;
+
+    const onConnectionError = () => {
+      isError = true;
+      document.getElementById("display-img").style.display = "none";
+      document.getElementById("error-message").style.display = "inline";
+    };
+
+    const send = async (type, data) => {
+      if (isError) {
+        onConnectionError();
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/${type}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(data),
+        });
+      } catch {
+        onConnectionError();
+      }
+    };
+
+    const sendMouseRequest = async (id, data) => {
+      send("mouse", { id, ...data });
+    };
+
+    const sendKeyRequest = async (id, data) => {
+      send("key", { id, ...data });
+    };
+
+    const MOUSE_DOWN = 0;
+    const MOUSE_UP = 1;
+    const MOUSE_MOVE = 2;
+    const MOUSE_WHEEL = 3;
+
+    const KEY_DOWN = 0;
+    const KEY_UP = 1;
+
+    const display = document.getElementById("display");
+    const rect = display.getBoundingClientRect();
+    let height = window.innerHeight * window.devicePixelRatio;
+
+    window.addEventListener("resize", () => {
+      height = window.innerHeight * window.devicePixelRatio;
+    });
+
+    display.addEventListener("mousedown", (e) => {
+      sendMouseRequest(MOUSE_DOWN, {
+        button: e.button,
+        x: e.offsetX,
+        y: e.offsetY,
+        height,
+      });
+    });
+
+    display.addEventListener("mouseup", (e) => {
+      sendMouseRequest(MOUSE_UP, {
+        button: e.button,
+        x: e.offsetX,
+        y: e.offsetY,
+        height,
+      });
+    });
+
+    display.addEventListener("mousemove", (e) => {
+      sendMouseRequest(MOUSE_MOVE, { x: e.offsetX, y: e.offsetY, height });
+    });
+
+    display.addEventListener("wheel", (e) => {
+      sendMouseRequest(MOUSE_WHEEL, {
+        x: e.offsetX,
+        y: e.offsetY,
+        height,
+        delta_x: e.deltaX,
+        delta_y: e.deltaY,
+      });
+    }, { passive: false });
+
+    document.addEventListener("keydown", (e) => {
+      console.log(e.code.toLowerCase())
+      sendKeyRequest(KEY_DOWN, { code: e.code.toLowerCase() });
+    });
+
+    document.addEventListener("keyup", (e) => {
+      sendKeyRequest(KEY_UP, { code: e.code.toLowerCase() });
+    });
+  </script>
+</html>
